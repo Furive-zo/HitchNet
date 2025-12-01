@@ -1,0 +1,3 @@
+[submodule "datasets/LI-HAE"]
+	path = datasets/LI-HAE
+	url = git@github.com:Furive-zo/LI-HAE.git
