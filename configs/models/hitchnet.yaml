@@ -1,0 +1,22 @@
+model:
+  name: "HitchNet"
+
+  temporal:
+    micro_input_dim: 5  
+    micro_hidden_dim: 64
+    macro_hidden_dim: 128
+    micro_layers: 1
+    macro_layers: 1
+    bidirectional_micro: false
+    bidirectional_macro: false
+
+  spatial:
+    gat_hidden_dim: 128
+    gat_layers: 3
+    gat_heads: 4
+    gat_k: 16
+
+  fusion:
+    fusion_dim: 256
+    fusion_heads: 4
+    dropout: 0.1

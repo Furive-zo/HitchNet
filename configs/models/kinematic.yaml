@@ -1,0 +1,5 @@
+model:
+  name: "Kinematic"
+  kinematic:
+    L: 2.0
+    Lt: 3.0

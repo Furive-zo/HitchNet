@@ -1,0 +1,7 @@
+model:
+  name: "PointNet-LSTM"
+  pointnet:
+    dim: 128
+  lstm:
+    hidden_dim: 128
+    num_layers: 2

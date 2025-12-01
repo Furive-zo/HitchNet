@@ -1,0 +1,17 @@
+dataset:
+  name: "charger"
+  root: "datasets/LI-HAE/dataset/charger_trailer"
+  split: "datasets/LI-HAE/splits/charger_trailer_split.json"
+  
+  # -------------------------------------------
+  # LiDAR branch parameters
+  # -------------------------------------------
+  pcd_max_points: 1000
+
+
+  # -------------------------------------------
+  # Temporal branch parameters
+  # -------------------------------------------
+
+  temporal_window: 20        # = 20 frames = 2 seconds
+  micro_seq_length: 10       # = sensor sampling

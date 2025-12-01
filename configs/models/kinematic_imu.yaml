@@ -1,0 +1,9 @@
+model:
+  name: "Kinematic-IMU-UKF"
+  kinematic:
+    L: 2.0
+    Lt: 3.0
+  ukf:
+    alpha: 1e-3
+    beta: 2.0
+    kappa: 0

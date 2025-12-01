@@ -1,0 +1,1 @@
+python3 -m scripts.train --config configs/experiments/e1_charger_hitchnet.yaml

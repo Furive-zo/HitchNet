@@ -1,0 +1,4 @@
+model:
+  name: "IMU-GRU"
+  hidden_dim: 128
+  num_layers: 2

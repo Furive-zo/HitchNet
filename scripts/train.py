@@ -1,152 +1,249 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
+import argparse
+from pathlib import Path
+from datetime import datetime
+
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torch.nn import MSELoss
-from torch.optim import Adam
+from torch.optim import AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from tqdm import tqdm
 
-from load_dataset import TrailerHitchSequenceDataset
-from collate import collate_fn, collate_fn_pointnet
-from models import GATSpatialTemporal
-from loss_functions import combined_loss
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from utils.load_config import load_config         
+from utils.load_dataset import HitchDataset  
+from utils.collate import collate_fn     
+from utils.loss import hitch_loss
 
-# -------------------------------
-# 🔧 Config
-root_dir = "/home/furive-zo/Workspace/Study/Research/trailer-HAE/src/dataset"
+from models import build_model     
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-batch_size = 512
-epochs = 100
-lr = 1e-3
-save_every = 10
+def parse_args():
+    parser = argparse.ArgumentParser(description="HitchNet training script")
+    parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Path to experiment config yaml (e.g. configs/experiments/e1_charger_hitchnet.yaml)",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cuda",
+        help="cuda or cpu",
+    )
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=None,
+        help="Override num_workers in dataset config (optional)",
+    )
+    return parser.parse_args()
 
-TEMPORAL_TYPE = 'TCN' #  'TCN', 'LSTM', 'Transformer', 'MLP' 중 선택
-FUSION_TYPE = 'gating' # 'gating', 'concat', 'cross', 'gating+cross', 'gating+cross+residual' 중 선택
 
-save_dir = f"./ckpts/{TEMPORAL_TYPE}/{FUSION_TYPE}"
-os.makedirs(save_dir, exist_ok=True)
+def move_batch_to_device(batch, device):
+    out = {}
+    for k, v in batch.items():
+        if isinstance(v, torch.Tensor):
+            out[k] = v.to(device, non_blocking=True)
+        else:
+            out[k] = v
+    return out
 
-# -------------------------------
-# 📦 Dataset & Loader
-train_dataset = TrailerHitchSequenceDataset(root_dir, sequence_length=32, sensor_sample_len=10, mode="train")
-val_dataset = TrailerHitchSequenceDataset(root_dir, sequence_length=32, sensor_sample_len=10, mode="val")
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
 
-# -------------------------------
-# Model declare
-model = GATSpatialTemporal(
-    graph_input_dim=6,
-    graph_hidden_dim=64,
-    temporal_hidden_dim=64,
-    num_heads=4,
-    output_dim=1,
-    temporal_type=TEMPORAL_TYPE,
-    fusion_type=FUSION_TYPE,
-    use_dgcnn=False 
-)
+def main():
+    args = parse_args()
 
-# ✅ 파라미터 수 출력 추가
-total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print(f"✅ Loaded model 'GAT-{TEMPORAL_TYPE}-{FUSION_TYPE}' with {total_params:,} trainable parameters.\n")
+    # ============================
+    # 1) Config load
+    # ============================
+    cfg = load_config(args.config)
 
-# -------------------------------
-# ⚙️ Optimizer & Scheduler
-optimizer = Adam(model.parameters(), lr=lr)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
+    exp_cfg = cfg.get("experiment", {})
+    dset_cfg = cfg["dataset"]
+    model_cfg = cfg["model"]
+    train_cfg = cfg["train"]
 
-# -------------------------------
-# 📊 학습 기록 및 Early Stopping
-best_val_loss = float('inf')
-best_epoch = -1
-early_stop_counter = 0
-early_stop_patience = 10
-best_ckpt_path = os.path.join(save_dir, f"BEST_GAT-{TEMPORAL_TYPE}-{FUSION_TYPE}.pt")
+    exp_name = exp_cfg.get("name", Path(args.config).stem)
+    out_dir = exp_cfg.get("output_dir", os.path.join("ckpts", exp_name))
+    os.makedirs(out_dir, exist_ok=True)
 
-# -------------------------------
-# 🏋️ Training Loop
-for epoch in range(epochs):
-    model.to(device)  
-    model.train()
-    total_loss = 0.0
-    total_rmse = 0.0
+    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    print(f"[INFO] Using device: {device}")
 
-    for batch in tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Train]"):
-        angular = batch["angular"].to(device)
-        vel     = batch["vel"].to(device)
-        steer   = batch["steer"].to(device)
-        graph   = batch["graph"]
-        graph = graph.to(device)  
-        target  = batch["hitch_angle"].to(device)
-        batch_index = graph.batch.to(device) 
+    # ============================
+    # 2) Dataset & DataLoader
+    # ============================
+    num_workers = args.num_workers if args.num_workers is not None else dset_cfg.get("num_workers", 4)
+    batch_size = train_cfg.get("batch_size", 8)
 
-        preds = model(graph, vel, steer, angular, batch_index).squeeze(1)
-        loss, rmse_deg = combined_loss(preds, target)
+    # HitchDataset은 하나의 split_json에서 split="train"/"val"을 나누는 구조
+    root = dset_cfg["root"]
+    split_json = dset_cfg["split"]
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    temporal_window = dset_cfg.get("temporal_window", 20)
+    micro_seq_length = dset_cfg.get("micro_seq_length", 10)
+    pcd_max_points = dset_cfg.get("pcd_max_points", 1000)
 
-        total_loss += loss.item()
-        total_rmse += rmse_deg.item()
+    train_dataset = HitchDataset(
+        root=root,
+        split_json=split_json,
+        split="train",
+        temporal_window=temporal_window,
+        micro_seq_length=micro_seq_length,
+        pcd_max_points=pcd_max_points,
+    )
 
-    avg_loss = total_loss / len(train_loader)
-    avg_rmse = total_rmse / len(train_loader)
+    val_dataset = HitchDataset(
+        root=root,
+        split_json=split_json,
+        split="val",
+        temporal_window=temporal_window,
+        micro_seq_length=micro_seq_length,
+        pcd_max_points=pcd_max_points,
+    )
 
-    # -------------------------------
-    model.eval()
-    val_loss = 0.0
-    val_rmse = 0.0
-    with torch.no_grad():
-        for batch in tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} [Valid]"):
-            angular = batch["angular"].to(device)
-            vel     = batch["vel"].to(device)
-            steer   = batch["steer"].to(device)
-            graph   = batch["graph"]
-            graph = graph.to(device)
-            target  = batch["hitch_angle"].to(device)
-            batch_index = graph.batch.to(device)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True,
+        drop_last=True,
+        collate_fn=collate_fn,
+    )
 
-            preds = model(graph, vel, steer, angular, batch_index).squeeze(1)
-            loss, rmse_deg = combined_loss(preds, target)
-            val_loss += loss.item()
-            val_rmse += rmse_deg.item()
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+        drop_last=False,
+        collate_fn=collate_fn,
+    )
 
-    avg_val_loss = val_loss / len(val_loader)
-    avg_val_rmse = val_rmse / len(val_loader)
-    scheduler.step(avg_val_loss)
+    # ============================
+    # 3) Model, Optimizer, Scheduler
+    # ============================
+    model = build_model(model_cfg)   # 내부에서 HitchNet(model_cfg) 생성된다고 가정
+    model = model.to(device)
 
-    print(f"[Epoch {epoch+1:03d}] "
-          f"Train Loss: {avg_loss:.4f}, RMSE: {avg_rmse:.2f}° | "
-          f"Valid Loss: {avg_val_loss:.4f}, RMSE: {avg_val_rmse:.2f}°")
+    lr = train_cfg.get("lr", 1e-3)
+    weight_decay = train_cfg.get("weight_decay", 1e-4)
+    epochs = train_cfg.get("epochs", 50)
+    use_amp = train_cfg.get("amp", True)
 
-    # 💾 체크포인트 저장
-    if (epoch + 1) % save_every == 0 or (epoch + 1) == epochs:
-        ckpt_path = os.path.join(save_dir, f"GAT-{TEMPORAL_TYPE}-{FUSION_TYPE}_epoch{epoch+1:03d}.pt")
-        torch.save({
+    optimizer = AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    scheduler = CosineAnnealingLR(optimizer, T_max=epochs)
+
+    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+
+    # ============================
+    # 4) Training loop
+    # ============================
+    best_val_loss = float("inf")
+    start_epoch = 0
+
+    for epoch in range(start_epoch, epochs):
+        # ------------------------
+        # Train one epoch
+        # ------------------------
+        model.train()
+        running_loss = 0.0
+
+        pbar = tqdm(train_loader, desc=f"[Train {epoch+1}/{epochs}]")
+        for batch in pbar:
+            batch = move_batch_to_device(batch, device)
+            optimizer.zero_grad(set_to_none=True)
+
+            with torch.cuda.amp.autocast(enabled=use_amp):
+                pred = model(batch)              # (B,2)
+                gt = batch["gt"]                # (B,2)
+                loss = hitch_loss(pred, gt)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
+            running_loss += loss.item()
+            pbar.set_postfix({"loss": f"{loss.item():.4f}"})
+
+        train_loss = running_loss / len(train_loader)
+        print(f"[Epoch {epoch+1}] Train Loss: {train_loss:.6f}")
+
+        # ------------------------
+        # Validation
+        # ------------------------
+        model.eval()
+        val_loss = 0.0
+
+        # accumulate angle errors
+        angle_errs = []
+
+        with torch.no_grad():
+            pbar = tqdm(val_loader, desc=f"[Val {epoch+1}/{epochs}]")
+            for batch in pbar:
+                batch = move_batch_to_device(batch, device)
+                with torch.cuda.amp.autocast(enabled=use_amp):
+                    pred = model(batch)      # (B,2)
+                    gt = batch["gt"]        # (B,2)
+                    loss = hitch_loss(pred, gt)
+
+                val_loss += loss.item()
+                pbar.set_postfix({"val_loss": f"{loss.item():.4f}"})
+
+                # ---- angle RMSE accumulation ----
+                cos_p, sin_p = pred[:,0], pred[:,1]
+                cos_g, sin_g = gt[:,0], gt[:,1]
+
+                theta_p = torch.atan2(sin_p, cos_p)
+                theta_g = torch.atan2(sin_g, cos_g)
+
+                err = theta_p - theta_g                          # rad
+                err = (err + torch.pi) % (2 * torch.pi) - torch.pi # wrap
+                err_deg = err * 180.0 / torch.pi
+
+                angle_errs.append(err_deg.cpu())
+
+        val_loss /= len(val_loader)
+
+        # ----- Compute RMSE and MAE -----
+        angle_errs = torch.cat(angle_errs)         # (total_val_samples,)
+        rmse = torch.sqrt(torch.mean(angle_errs**2)).item()
+        mae = torch.mean(torch.abs(angle_errs)).item()
+
+        print(f"[Epoch {epoch+1}] Val Loss: {val_loss:.6f}  |  RMSE: {rmse:.3f}°  |  MAE: {mae:.3f}°")
+
+        scheduler.step()
+
+        # ------------------------
+        # Checkpoint 저장
+        # ------------------------
+        ckpt = {
             "epoch": epoch + 1,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "train_loss": avg_loss,
-            "train_rmse_deg": avg_rmse,
-            "val_loss": avg_val_loss,
-            "val_rmse_deg": avg_val_rmse
-        }, ckpt_path)
-        print(f"📦 Checkpoint saved: {ckpt_path}")
+            "model_state": model.state_dict(),
+            "optimizer_state": optimizer.state_dict(),
+            "scheduler_state": scheduler.state_dict(),
+            "scaler_state": scaler.state_dict(),
+            "config": cfg,
+        }
 
-    # ✅ Best model 저장
-    if avg_val_loss < best_val_loss:
-        best_val_loss = avg_val_loss
-        best_epoch = epoch + 1
-        early_stop_counter = 0
-        torch.save(model.state_dict(), best_ckpt_path)
-        print(f"✅ New best model saved at epoch {best_epoch}: Val Loss = {best_val_loss:.4f}")
-    else:
-        early_stop_counter += 1
-        print(f"⏳ No improvement for {early_stop_counter} epoch(s).")
+        # last ckpt
+        last_path = os.path.join(out_dir, "last.pth")
+        torch.save(ckpt, last_path)
 
-    # 🛑 Early stopping
-    if early_stop_counter >= early_stop_patience:
-        print(f"🛑 Early stopping triggered at epoch {epoch+1}")
-        break
+        # best ckpt
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_path = os.path.join(out_dir, "best.pth")
+            torch.save(ckpt, best_path)
+            print(f"[INFO] New best val loss: {best_val_loss:.6f}, saved to {best_path}")
+
+    print("[INFO] Training finished.")
+
+
+if __name__ == "__main__":
+    main()
