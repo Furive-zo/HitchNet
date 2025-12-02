@@ -1,7 +1,7 @@
 dataset:
-  name: dummy
-  root: datasets/LI-HAE/dataset/dummy_trailer
-  split: datasets/LI-HAE/splits/dummy_trailer_split.json
+  name: "dummy"
+  root: "datasets/LI-HAE/dataset/dummy_trailer"
+  split: "datasets/LI-HAE/splits/dummy_trailer_split.json"
 
   # -------------------------------------------
   # LiDAR branch parameters

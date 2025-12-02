@@ -1,0 +1,44 @@
+{
+  "epoch": 50,
+  "val_loss": 9.17634231836529e-06,
+  "RMSE_deg": 0.2278965562582016,
+  "MAE_deg": 0.16079802811145782,
+  "R2": 0.9996590346439373,
+  "p95_deg": 0.4676302492618555,
+  "p99_deg": 0.7800433802604674,
+  "infer_ms": 10.13302071052685,
+  "fps": 98.68725512039407,
+  "timestamp": "2025-12-02 22:10:03",
+  "config": {
+    "exp_name": "E1_dummy_hitchnet",
+    "batch_size": 32,
+    "temporal_window": 20,
+    "micro_seq_length": 10,
+    "pcd_max_points": 1000,
+    "lr": 0.0001,
+    "epochs": 50,
+    "model": {
+      "name": "HitchNet",
+      "temporal": {
+        "micro_input_dim": 5,
+        "micro_hidden_dim": 64,
+        "micro_layers": 1,
+        "macro_hidden_dim": 128,
+        "macro_layers": 2,
+        "bidirectional_micro": false
+      },
+      "spatial": {
+        "gat_hidden_dim": 256,
+        "gat_layers": 3,
+        "gat_heads": 4,
+        "gat_k": 16
+      },
+      "fusion": {
+        "fusion_dim": 256,
+        "fusion_heads": 4,
+        "dropout": 0.1
+      }
+    }
+  },
+  "checkpoint_path": "ckpts/E1_dummy_hitchnet/best.pth"
+}

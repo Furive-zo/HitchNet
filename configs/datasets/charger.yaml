@@ -8,10 +8,8 @@ dataset:
   # -------------------------------------------
   pcd_max_points: 1000
 
-
   # -------------------------------------------
   # Temporal branch parameters
   # -------------------------------------------
-
   temporal_window: 20        # = 20 frames = 2 seconds
   micro_seq_length: 10       # = sensor sampling

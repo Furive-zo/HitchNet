@@ -6,11 +6,12 @@ from torch.utils.data import Dataset
 import open3d as o3d
 
 
-def linear_interpolate(seq, target_len):
+def linear_interpolate(seq, target_len, path='none'):
     seq = np.asarray(seq)
     L = len(seq)
 
     if L == 0:
+        print(path)
         return np.zeros((target_len, seq.shape[1]))
 
     if L == target_len:
@@ -92,7 +93,7 @@ class HitchDataset(Dataset):
             seq.append(sample)
 
         seq = np.array(seq, dtype=np.float32)
-        return linear_interpolate(seq, self.micro_seq_length)
+        return linear_interpolate(seq, self.micro_seq_length, path)
 
     def _load_vel(self, path):
         js = self._load_json(path)
