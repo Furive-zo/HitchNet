@@ -1,0 +1,45 @@
+{
+  "epoch": 49,
+  "val_loss": 1.1728746163104582e-05,
+  "RMSE_deg": 0.2677938938140869,
+  "MAE_deg": 0.18714876472949982,
+  "R2": 0.999146292488094,
+  "p95_deg": 0.5346070855855941,
+  "p99_deg": 0.8182820630073535,
+  "infer_ms": 18.307465987446705,
+  "fps": 54.6225239847881,
+  "timestamp": "2025-12-02 00:20:04",
+  "config": {
+    "exp_name": "E1_charger_hitchnet",
+    "batch_size": 32,
+    "temporal_window": 20,
+    "micro_seq_length": 10,
+    "pcd_max_points": 1000,
+    "lr": 0.0001,
+    "epochs": 50,
+    "model": {
+      "name": "HitchNet",
+      "temporal": {
+        "micro_input_dim": 5,
+        "micro_hidden_dim": 64,
+        "micro_layers": 1,
+        "macro_hidden_dim": 128,
+        "macro_layers": 2,
+        "macro_pool": "last",
+        "bidirectional_micro": false
+      },
+      "spatial": {
+        "gat_hidden_dim": 256,
+        "gat_layers": 3,
+        "gat_heads": 4,
+        "gat_k": 16
+      },
+      "fusion": {
+        "fusion_dim": 256,
+        "fusion_heads": 4,
+        "dropout": 0.1
+      }
+    }
+  },
+  "checkpoint_path": "ckpts/E1_charger_hitchnet/best.pth"
+}
