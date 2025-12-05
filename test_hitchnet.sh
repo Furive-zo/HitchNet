@@ -1,0 +1,1 @@
+python3 -m scripts.test --config configs/experiments/e1_charger_hitchnet.yaml --ckpt ckpts/E1_charger_hitchnet/best.pth
