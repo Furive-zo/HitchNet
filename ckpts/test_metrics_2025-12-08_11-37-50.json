@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-08_11-37-50",
+  "config": "configs/experiments/e1_dummy_hitchnet.yaml",
+  "checkpoint": "ckpts/E1_charger_hitchnet_v2/best.pth",
+  "loss": 0.004253649040353748,
+  "RMSE_deg": 7.591794967651367,
+  "MAE_deg": 7.022462844848633,
+  "MaxErr_deg": 27.435571670532227,
+  "p95_deg": 11.461562156677246,
+  "p99_deg": 13.37583484649658,
+  "R2": 0.5720387570182377,
+  "infer_ms": 421.04976222200213,
+  "fps": 2.375016185076816,
+  "Params_M": 1.86925
+}
