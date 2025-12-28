@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-28_12-48-02",
+  "config": "configs/experiments/e1_charger_bev_resnet.yaml",
+  "checkpoint": "ckpts/E1_charger_bev_resnet/best.pth",
+  "loss": 2.384350379299e-05,
+  "RMSE_deg": 0.39168843626976013,
+  "MAE_deg": 0.24526339769363403,
+  "MaxErr_deg": 3.1311771869659424,
+  "p95_deg": 0.7992755174636841,
+  "p99_deg": 1.5823157310485854,
+  "R2": 0.9972704701600116,
+  "infer_ms": 5.137280647799095,
+  "fps": 194.65551301512374,
+  "Params_M": 11.340994
+}

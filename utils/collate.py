@@ -49,12 +49,21 @@ def collate_fn(batch):
     vel_batch = torch.stack([item["velocity"] for item in batch], dim=0)
     steer_batch = torch.stack([item["steering"] for item in batch], dim=0)
     gt_batch = torch.stack([item["gt"] for item in batch], dim=0)
+    # ✅ NEW: BEV
+    if "bev" in batch[0]:
+        bev_batch = torch.stack([item["bev"] for item in batch], dim=0)  # (B,3,H,W)
+    else:
+        bev_batch = None
 
-    return {
+    out = {
         "pcd": pcd_batch,
-        "pcd_mask": mask_batch,     # 새로 추가됨
+        "pcd_mask": mask_batch,
         "imu": imu_batch,
         "velocity": vel_batch,
         "steering": steer_batch,
         "gt": gt_batch,
     }
+    if bev_batch is not None:
+        out["bev"] = bev_batch
+
+    return out

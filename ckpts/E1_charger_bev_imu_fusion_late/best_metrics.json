@@ -1,0 +1,32 @@
+{
+  "epoch": 50,
+  "val_loss": 9.79317083044906e-06,
+  "RMSE_deg": 0.24253253638744354,
+  "MAE_deg": 0.1834980845451355,
+  "R2": 0.999299758241865,
+  "p95_deg": 0.4982465684413907,
+  "p99_deg": 0.7390768605470657,
+  "infer_ms": 7.534773897104226,
+  "fps": 132.71798379833552,
+  "timestamp": "2025-12-28 01:00:05",
+  "config": {
+    "exp_name": "E1_charger_bev_imu_fusion_late",
+    "batch_size": 32,
+    "temporal_window": 20,
+    "micro_seq_length": 10,
+    "pcd_max_points": 1000,
+    "lr": 0.0001,
+    "epochs": 50,
+    "model": {
+      "name": "bev_imu_fusion",
+      "bev_channels": 3,
+      "resnet": 18,
+      "bev_feat_dim": 256,
+      "imu_dim": 3,
+      "imu_hidden_dim": 128,
+      "imu_layers": 1,
+      "fusion": "late"
+    }
+  },
+  "checkpoint_path": "ckpts/E1_charger_bev_imu_fusion_late/best.pth"
+}

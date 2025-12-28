@@ -26,6 +26,77 @@ def linear_interpolate(seq, target_len, path='none'):
         out.append(np.interp(x_new, xp, seq[:, d]))
     return np.stack(out, axis=1)
 
+def points_to_bev(
+    pts_xyz: np.ndarray,
+    joint_shift_x: float = 0.8,
+    x_range=(-4.0, 1.5),
+    y_range=(-2.0, 2.0),
+    z_range=(-2.0, 2.0),
+    res: float = 0.05,
+    clip_count: float = 10.0,
+):
+    """
+    pts_xyz: (N,3) in LiDAR/ego frame (x forward, y left, z up assumed)
+    - Shift to joint-centered frame by x += 0.8 (joint at -0.8 -> 0)
+    - Build BEV with 3 channels: [occupancy, height_max, log_density]
+    return: bev (3, H, W) float32
+    """
+
+    # 1) joint-centered shift
+    pts = pts_xyz.copy()
+    pts[:, 0] += joint_shift_x  # joint becomes 0
+
+    x_min, x_max = x_range
+    y_min, y_max = y_range
+    z_min, z_max = z_range
+
+    # 2) ROI filter
+    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    m = (
+        (x >= x_min) & (x < x_max) &
+        (y >= y_min) & (y < y_max) &
+        (z >= z_min) & (z < z_max)
+    )
+    pts = pts[m]
+
+    H = int(np.ceil((x_max - x_min) / res))
+    W = int(np.ceil((y_max - y_min) / res))
+
+    if pts.shape[0] == 0:
+        return np.zeros((3, H, W), dtype=np.float32)
+
+    # 3) binning
+    ix = ((pts[:, 0] - x_min) / res).astype(np.int32)
+    iy = ((pts[:, 1] - y_min) / res).astype(np.int32)
+    ix = np.clip(ix, 0, H - 1)
+    iy = np.clip(iy, 0, W - 1)
+
+    # 4) occupancy / density
+    count = np.zeros((H, W), dtype=np.float32)
+    np.add.at(count, (ix, iy), 1.0)
+
+    # 5) height max
+    hmax = np.full((H, W), -np.inf, dtype=np.float32)
+    # simple loop (OK as baseline; we can optimize later if needed)
+    for i in range(pts.shape[0]):
+        xi, yi = ix[i], iy[i]
+        zi = pts[i, 2]
+        if zi > hmax[xi, yi]:
+            hmax[xi, yi] = zi
+    hmax[hmax == -np.inf] = z_min
+
+    # normalize height to [0,1]
+    hmax = (hmax - z_min) / (z_max - z_min + 1e-6)
+    hmax = np.clip(hmax, 0.0, 1.0)
+
+    # channel 만들기
+    occ = np.clip(count, 0.0, clip_count) / clip_count
+    dlog = np.log1p(count) / np.log1p(clip_count)
+
+    bev = np.stack([occ, hmax, dlog], axis=0).astype(np.float32)  # (3,H,W)
+    bev = np.clip(bev, 0.0, 1.0).astype(np.float32)
+
+    return bev
 
 class HitchDataset(Dataset):
     def __init__(self,
@@ -152,9 +223,18 @@ class HitchDataset(Dataset):
         imu_seq = np.stack(imu_seq, axis=0)          # (T, micro, 3)
         vel_seq = np.stack(vel_seq, axis=0)          # (T, micro, 1)
         steer_seq = np.stack(steer_seq, axis=0)      # (T, micro, 1)
+        bev = points_to_bev(
+            pcd, 
+            x_range=(-4.0, 1.5), 
+            y_range=(-3.0, 3.0), 
+            z_range=(-2.0, 2.0), 
+            res=0.05,
+            clip_count=10.0,
+        )
 
         return {
             "pcd": torch.tensor(pcd, dtype=torch.float32),                 # (N,3)
+            "bev": torch.from_numpy(bev),                                  # (3,H,W)
             "imu": torch.from_numpy(imu_seq).float(),                      # (T,micro,3)
             "velocity": torch.from_numpy(vel_seq).float(),                 # (T,micro,1)
             "steering": torch.from_numpy(steer_seq).float(),               # (T,micro,1)

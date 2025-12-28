@@ -1,0 +1,9 @@
+model:
+  name: bev_imu_fusion
+  bev_channels: 3
+  resnet: 18
+  bev_feat_dim: 256
+  imu_dim: 3
+  imu_hidden_dim: 128
+  imu_layers: 1
+  fusion: late   # or gated

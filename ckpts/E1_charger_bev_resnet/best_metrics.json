@@ -1,0 +1,30 @@
+{
+  "epoch": 50,
+  "val_loss": 1.2789138360251567e-05,
+  "RMSE_deg": 0.2779189944267273,
+  "MAE_deg": 0.20681531727313995,
+  "R2": 0.9990805154128849,
+  "p95_deg": 0.5845965385437009,
+  "p99_deg": 0.8756565606594078,
+  "infer_ms": 6.202559526792296,
+  "fps": 161.22376507318393,
+  "timestamp": "2025-12-28 12:07:55",
+  "config": {
+    "exp_name": "E1_charger_bev_resnet",
+    "batch_size": 32,
+    "temporal_window": 20,
+    "micro_seq_length": 10,
+    "pcd_max_points": 1000,
+    "lr": 0.0001,
+    "epochs": 50,
+    "model": {
+      "name": "bev_resnet",
+      "bev_channels": 3,
+      "resnet": 18,
+      "feat_dim": 256,
+      "head_hidden": 128,
+      "dropout": 0.1
+    }
+  },
+  "checkpoint_path": "ckpts/E1_charger_bev_resnet/best.pth"
+}

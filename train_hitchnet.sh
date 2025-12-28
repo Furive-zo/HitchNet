@@ -1,1 +1,1 @@
-python3 -m scripts.train --config configs/experiments/e1_temporary_hitchnet.yaml
+python3 -m scripts.train --config configs/experiments/e1_charger_bev_resnet.yaml

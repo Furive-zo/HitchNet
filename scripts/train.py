@@ -138,6 +138,31 @@ def main():
         pbar = tqdm(train_loader, desc=f"[Train {epoch+1}/{epochs}]")
         for batch in pbar:
             batch = move_batch_to_device(batch, device)
+            # import matplotlib
+            # matplotlib.use("Agg")  # headless용
+            # import matplotlib.pyplot as plt
+
+            # bev0 = batch["bev"][0].detach().cpu().numpy()  # (3,H,W)
+
+            # plt.figure(figsize=(6,5))
+            # plt.imshow(bev0[0])  # occupancy
+            # plt.title("BEV occupancy (ch0)")
+            # plt.colorbar()
+            # plt.tight_layout()
+            # plt.savefig("bev_occ.png", dpi=200)
+            # plt.close()
+            # print("saved: bev_occ.png")
+            # names = ["occ", "hmax", "dlog"]
+            # for c in range(3):
+            #     plt.figure(figsize=(6,5))
+            #     plt.imshow(bev0[c])
+            #     plt.title(f"BEV {names[c]}")
+            #     plt.colorbar()
+            #     plt.tight_layout()
+            #     plt.savefig(f"bev_{names[c]}.png", dpi=200)
+            #     plt.close()
+            # print("saved bev_occ.png bev_hmax.png bev_dlog.png")
+
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast(enabled=use_amp):
