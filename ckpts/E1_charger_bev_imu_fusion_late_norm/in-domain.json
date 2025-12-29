@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-12-28_23-07-32",
+  "config": "configs/experiments/e1_charger_bev_imu_fusion_late_norm.yaml",
+  "checkpoint": "ckpts/E1_charger_bev_imu_fusion_late_norm/best.pth",
+  "loss": 2.068655678168279e-05,
+  "RMSE_deg": 0.3644293248653412,
+  "MAE_deg": 0.22707657516002655,
+  "MaxErr_deg": 3.211459159851074,
+  "p95_deg": 0.717115193605423,
+  "p99_deg": 1.5314594626426699,
+  "R2": 0.9976371663682962,
+  "infer_ms": 6.584079369254734,
+  "fps": 151.8815226726515,
+  "Params_M": 11.441732
+}

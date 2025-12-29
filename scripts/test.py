@@ -55,7 +55,7 @@ def main():
     exp_cfg = cfg.get("experiment", {})
     dset_cfg = cfg["dataset"]
     model_cfg = cfg["model"]
-    test_cfg = cfg.get("test", {})
+    test_cfg = cfg.get("train", {})
 
     exp_name = exp_cfg.get("name", Path(args.config).stem)
     out_dir = exp_cfg.get("output_dir", os.path.join("ckpts", exp_name))
@@ -69,6 +69,8 @@ def main():
     # ============================
     num_workers = args.num_workers or dset_cfg.get("num_workers", 4)
     batch_size = test_cfg.get("batch_size", cfg["train"].get("batch_size", 8))
+    trailer_type = dset_cfg.get("name", "charger")
+    normalize_xy = test_cfg.get("normalize_xy", False)
 
     test_dataset = HitchDataset(
         root=dset_cfg["root"],
@@ -77,6 +79,8 @@ def main():
         temporal_window=dset_cfg.get("temporal_window", 20),
         micro_seq_length=dset_cfg.get("micro_seq_length", 10),
         pcd_max_points=dset_cfg.get("pcd_max_points", 1000),
+        trailer_type=trailer_type,
+        normalize_xy=normalize_xy,
     )
     test_loader = DataLoader(
         test_dataset,

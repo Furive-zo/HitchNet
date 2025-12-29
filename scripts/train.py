@@ -72,6 +72,8 @@ def main():
     temporal_window = dset_cfg.get("temporal_window", 20)
     micro_seq_length = dset_cfg.get("micro_seq_length", 10)
     pcd_max_points = dset_cfg.get("pcd_max_points", 1000)
+    trailer_type = dset_cfg.get("name", "charger")
+    normalize_xy = train_cfg.get("normalize_xy", False)
 
     train_dataset = HitchDataset(
         root=root,
@@ -80,6 +82,8 @@ def main():
         temporal_window=temporal_window,
         micro_seq_length=micro_seq_length,
         pcd_max_points=pcd_max_points,
+        trailer_type=trailer_type,
+        normalize_xy=normalize_xy,
     )
     val_dataset = HitchDataset(
         root=root,
@@ -88,6 +92,8 @@ def main():
         temporal_window=temporal_window,
         micro_seq_length=micro_seq_length,
         pcd_max_points=pcd_max_points,
+        trailer_type=trailer_type,
+        normalize_xy=normalize_xy,
     )
 
     train_loader = DataLoader(

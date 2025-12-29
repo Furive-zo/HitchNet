@@ -5,6 +5,11 @@ import torch
 from torch.utils.data import Dataset
 import open3d as o3d
 
+TRAILER_TYPES = {
+    "charger": {"len": 1.8, "width": 1.45, "height": 1.5, "joint_to_trailer_x": -1.2},
+    "dummy": {"len": 2.6, "width": 1.65, "height": 1.6, "joint_to_trailer_x": -2.35},
+    "temporary": {"len": 1.8, "width": 1.45, "height": 1.2, "joint_to_trailer_x": -1.2},
+}
 
 def linear_interpolate(seq, target_len, path='none'):
     seq = np.asarray(seq)
@@ -27,30 +32,34 @@ def linear_interpolate(seq, target_len, path='none'):
     return np.stack(out, axis=1)
 
 def points_to_bev(
-    pts_xyz: np.ndarray,
-    joint_shift_x: float = 0.8,
+    pts_xyz,
     x_range=(-4.0, 1.5),
-    y_range=(-2.0, 2.0),
+    y_range=(-3.0, 3.0),
     z_range=(-2.0, 2.0),
-    res: float = 0.05,
-    clip_count: float = 10.0,
+    res=0.05,
+    clip_count=10.0,
+    joint_shift_x=0.8,
+    normalize_xy=False,
+    trailer_len=1.8,
+    trailer_width=1.45,
 ):
-    """
-    pts_xyz: (N,3) in LiDAR/ego frame (x forward, y left, z up assumed)
-    - Shift to joint-centered frame by x += 0.8 (joint at -0.8 -> 0)
-    - Build BEV with 3 channels: [occupancy, height_max, log_density]
-    return: bev (3, H, W) float32
-    """
-
-    # 1) joint-centered shift
     pts = pts_xyz.copy()
-    pts[:, 0] += joint_shift_x  # joint becomes 0
 
+    # 1) joint-centered shift (LiDAR 0,0 / joint -0.8,0 => x += 0.8)
+    pts[:, 0] += joint_shift_x
+
+    # 2) type-aware scale normalization
+    if normalize_xy:
+        L = max(float(trailer_len), 1e-6)
+        W = max(float(trailer_width), 1e-6)
+        pts[:, 0] = pts[:, 0] / L
+        pts[:, 1] = pts[:, 1] / W
+
+    # ---- 아래부터는 기존 ROI filter / binning / 채널 생성 로직 그대로 ----
     x_min, x_max = x_range
     y_min, y_max = y_range
     z_min, z_max = z_range
 
-    # 2) ROI filter
     x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
     m = (
         (x >= x_min) & (x < x_max) &
@@ -65,37 +74,29 @@ def points_to_bev(
     if pts.shape[0] == 0:
         return np.zeros((3, H, W), dtype=np.float32)
 
-    # 3) binning
     ix = ((pts[:, 0] - x_min) / res).astype(np.int32)
     iy = ((pts[:, 1] - y_min) / res).astype(np.int32)
     ix = np.clip(ix, 0, H - 1)
     iy = np.clip(iy, 0, W - 1)
 
-    # 4) occupancy / density
     count = np.zeros((H, W), dtype=np.float32)
     np.add.at(count, (ix, iy), 1.0)
 
-    # 5) height max
     hmax = np.full((H, W), -np.inf, dtype=np.float32)
-    # simple loop (OK as baseline; we can optimize later if needed)
     for i in range(pts.shape[0]):
         xi, yi = ix[i], iy[i]
         zi = pts[i, 2]
         if zi > hmax[xi, yi]:
             hmax[xi, yi] = zi
     hmax[hmax == -np.inf] = z_min
-
-    # normalize height to [0,1]
     hmax = (hmax - z_min) / (z_max - z_min + 1e-6)
     hmax = np.clip(hmax, 0.0, 1.0)
 
-    # channel 만들기
     occ = np.clip(count, 0.0, clip_count) / clip_count
     dlog = np.log1p(count) / np.log1p(clip_count)
 
-    bev = np.stack([occ, hmax, dlog], axis=0).astype(np.float32)  # (3,H,W)
-    bev = np.clip(bev, 0.0, 1.0).astype(np.float32)
-
+    bev = np.stack([occ, hmax, dlog], axis=0).astype(np.float32)
+    bev = np.clip(bev, 0.0, 1.0)
     return bev
 
 class HitchDataset(Dataset):
@@ -105,12 +106,17 @@ class HitchDataset(Dataset):
                  split="train",
                  temporal_window=20,
                  micro_seq_length=10,
-                 pcd_max_points=1000):
+                 pcd_max_points=1000,
+                 trailer_type="charger",
+                 normalize_xy=False,
+                 ):
 
         self.root = root
         self.temporal_window = temporal_window
         self.micro_seq_length = micro_seq_length
         self.pcd_max_points = pcd_max_points
+        self.trailer_type = trailer_type
+        self.normalize_xy = normalize_xy
 
         # Load frame directories
         with open(split_json) as f:
@@ -223,13 +229,23 @@ class HitchDataset(Dataset):
         imu_seq = np.stack(imu_seq, axis=0)          # (T, micro, 3)
         vel_seq = np.stack(vel_seq, axis=0)          # (T, micro, 1)
         steer_seq = np.stack(steer_seq, axis=0)      # (T, micro, 1)
+        
+        t = self.trailer_type   # "charger" / "dummy" / "temporary" 
+        L = TRAILER_TYPES[t]["len"]
+        W = TRAILER_TYPES[t]["width"]
+        norm_xy = self.normalize_xy
+
         bev = points_to_bev(
-            pcd, 
-            x_range=(-4.0, 1.5), 
-            y_range=(-3.0, 3.0), 
-            z_range=(-2.0, 2.0), 
-            res=0.05,
+            pcd,
+            x_range=(-2.0, 0.5),
+            y_range=(-2.5, 2.5),
+            z_range=(-2.0, 2.0),
+            res=0.033,
             clip_count=10.0,
+            joint_shift_x=0.8,
+            normalize_xy=norm_xy,
+            trailer_len=L,
+            trailer_width=W,
         )
 
         return {

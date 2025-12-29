@@ -1,1 +1,1 @@
-python3 -m scripts.train --config configs/experiments/e1_charger_bev_resnet.yaml
+python3 -m scripts.train --config configs/experiments/e1_charger_bev_resnet_norm.yaml
