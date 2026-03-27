@@ -1,3 +1,0 @@
-model:
-  name: imu_gru
-  gru_hidden: 128

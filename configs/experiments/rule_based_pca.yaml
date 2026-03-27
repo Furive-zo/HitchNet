@@ -1,0 +1,10 @@
+experiment:
+  name: rule_based_pca
+  seed: 42
+
+model_config: models/rule_based_pca.yaml
+dataset_config: datasets/charger.yaml
+
+train:
+  normalize_xy: true
+  joint_shift_x: 0.0

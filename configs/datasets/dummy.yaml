@@ -2,6 +2,7 @@ dataset:
   name: "dummy"
   root: "datasets/LI-HAE/dataset/dummy_trailer"
   split: "datasets/LI-HAE/splits/dummy_trailer_split.json"
+  num_workers: 16
 
   # -------------------------------------------
   # LiDAR branch parameters

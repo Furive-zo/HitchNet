@@ -1,0 +1,7 @@
+model:
+  name: bev_resnet_regression
+  bev_channels: 5
+  resnet: 18
+  feat_dim: 256
+  head_hidden: 128
+  dropout: 0.1

@@ -1,0 +1,51 @@
+experiment:
+  name: charger_bev_resnet_regression_norm_aug
+  seed: 42
+
+model_config: models/bev_resnet_regression_norm.yaml
+dataset_config: datasets/charger.yaml
+
+train:
+# Traning param
+  epochs: 50
+  batch_size: 512
+  lr: 0.0001
+  weight_decay: 0.00001
+  scheduler: cosine
+  amp: true
+
+# Loss
+  loss_alpha: 0.7 # 0.7
+  loss_beta: 0.3 # 0.3
+  weight_factor: 3.0 # 3.0
+  huber_delta_deg: 0.5 # 0.5
+
+# BEV Alignment
+  normalize_xy: true
+  bev_use_hmax: false
+  bev_add_xy: false
+  occ_binary: true
+  dlog_range_norm: true
+  dlog_range_norm_mode: zscore
+  dlog_range_bin_size: 0.1
+  add_observed_mask: true
+  observed_bins: 360
+  observed_margin: 0.05
+
+# BEV Augmentation
+  aug_vis: true
+  aug_vis_max: 20
+  oversample_alpha: 0.5
+  oversample_max_w: 3.0
+  oversample_K: 240
+  aug_rotate_prob: 0.5
+  aug_rotate_target_min_deg: -60
+  aug_rotate_target_max_deg: 60
+  save_aug_hist: false
+  occ_prob: 0.5
+  occ_x_thresh: -2.0
+  occ_box_x: 1.5
+  occ_box_y: 2.0
+  trans_prob: 0.5
+  trans_max_m: 1.0
+  trans_dir: backward # forward / backward / both

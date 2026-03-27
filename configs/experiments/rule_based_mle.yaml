@@ -1,0 +1,11 @@
+experiment:
+  name: rule_based_mle
+  seed: 42
+
+model_config: models/rule_based_mle.yaml
+dataset_config: datasets/charger.yaml
+
+train:
+  normalize_xy: true
+  joint_shift_x: 0.0
+

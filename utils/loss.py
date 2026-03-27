@@ -10,10 +10,20 @@ def hitch_loss(
     pred_sc: torch.Tensor,          # [B,2] = (cos_hat, sin_hat)
     gt_sc: torch.Tensor,            # [B,2] = (cos, sin)
     weight_factor: float = 3.0,
-    alpha: float = 0.7,
-    beta: float = 0.3,
+    alpha: float = 1.0,
+    beta: float = 0.0,
     clamp_w: float = 8.0,
-    huber_delta_deg: float = 1.0
+    huber_delta_deg: float = 0.5,
+    bins: torch.Tensor | None = None,
+    bin_counts: torch.Tensor | None = None,
+    bin_alpha: float = 0.0,
+    bin_clamp: float = 8.0,
+    pcd: torch.Tensor | None = None,        # [B,N,3]
+    pcd_mask: torch.Tensor | None = None,   # [B,N]
+    line_loss_w: float = 0.0,
+    bbox_loss_w: float = 0.0,
+    bbox_len: float | None = None,
+    bbox_wid: float | None = None,
 ):
     """
     pred_sc: (B,2) [cos_hat, sin_hat]
@@ -64,5 +74,58 @@ def hitch_loss(
     # 5) total loss
     # --------------------------------------
     loss = alpha * huber_w + beta * cos_loss
+
+    # --------------------------------------
+    # 6) optional line distance consistency (signed)
+    # --------------------------------------
+    if line_loss_w > 0.0 and pcd is not None:
+        pts_xy = pcd[..., :2]  # (B,N,2)
+        if pcd_mask is not None:
+            mask = pcd_mask.unsqueeze(-1)  # (B,N,1)
+            denom = mask.sum(dim=1).clamp_min(1.0)
+            centroid = (pts_xy * mask).sum(dim=1) / denom  # (B,2)
+        else:
+            centroid = pts_xy.mean(dim=1)
+
+        v_pred = pred_sc / (pred_sc.norm(dim=-1, keepdim=True) + 1e-8)
+        v_gt = gt_sc / (gt_sc.norm(dim=-1, keepdim=True) + 1e-8)
+        # signed distance to line through origin with direction v
+        d_pred = v_pred[:, 0] * centroid[:, 1] - v_pred[:, 1] * centroid[:, 0]
+        d_gt = v_gt[:, 0] * centroid[:, 1] - v_gt[:, 1] * centroid[:, 0]
+        line_loss = torch.mean(torch.abs(d_pred - d_gt))
+        loss = loss + line_loss_w * line_loss
+
+    # --------------------------------------
+    # 7) optional bbox loss (outside distance sum)
+    # --------------------------------------
+    if bbox_loss_w > 0.0 and pcd is not None and bbox_len is not None and bbox_wid is not None:
+        pts_xy = pcd[..., :2]  # (B,N,2)
+        if pcd_mask is not None:
+            mask = pcd_mask.unsqueeze(-1).float()  # (B,N,1)
+        else:
+            mask = torch.ones_like(pts_xy[..., :1])
+
+        # rotate points into box frame (aligned with pred angle)
+        pred_unit = pred_sc / (pred_sc.norm(dim=-1, keepdim=True) + 1e-8)
+        c, s = pred_unit[:, 0], pred_unit[:, 1]
+        rot = torch.stack(
+            [torch.stack([c, s], dim=-1), torch.stack([-s, c], dim=-1)],
+            dim=-2,
+        )  # (B,2,2) rotation by -theta
+        pts_local = torch.einsum("bij,bnj->bni", rot, pts_xy)  # (B,N,2)
+
+        x = pts_local[..., 0]
+        y = pts_local[..., 1]
+        x_max = 0.0
+        x_min = -bbox_len
+        y_max = bbox_wid / 2.0
+
+        dx = torch.clamp(x - x_max, min=0.0) + torch.clamp(x_min - x, min=0.0)
+        dy = torch.clamp(torch.abs(y) - y_max, min=0.0)
+        dist = (dx + dy) * mask.squeeze(-1)
+
+        denom = mask.squeeze(-1).sum(dim=1).clamp_min(1.0)
+        bbox_loss = (dist.sum(dim=1) / denom).mean()
+        loss = loss + bbox_loss_w * bbox_loss
 
     return loss

@@ -1,0 +1,38 @@
+experiment:
+  name: charger_temporary_bev_resnet_regression_coral_dg
+  seed: 42
+
+model_config: models/bev_resnet_coral.yaml
+dataset_config: datasets/charger.yaml
+source_dataset_configs:
+  - datasets/charger.yaml
+  - datasets/temporary.yaml
+
+train:
+  epochs: 50
+  batch_size: 512
+  lr: 0.0001
+  weight_decay: 0.00001
+  scheduler: cosine
+  amp: true
+
+  # regression loss
+  loss_alpha: 0.7
+  loss_beta: 0.3
+  weight_factor: 3.0
+  huber_delta_deg: 0.5
+
+  # CORAL-DG (source-only covariance alignment across source domains)
+  coral_w: 0.05
+  coral_min_samples_per_domain: 8
+  coral_feat_zscore: true
+
+  # raw BEV setting (no augmentation / no extra alignment)
+  normalize_xy: false
+  bev_add_xy: false
+  bev_add_orient: false
+  bev_use_hmax: true
+  bev_use_dlog: true
+  occ_binary: false
+  add_observed_mask: false
+  joint_shift_x: 0.0

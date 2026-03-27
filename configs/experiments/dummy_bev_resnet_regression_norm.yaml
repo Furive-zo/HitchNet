@@ -1,0 +1,31 @@
+experiment:
+  name: dummy_bev_resnet_regression_norm
+  seed: 42
+
+model_config: models/bev_resnet_regression_norm.yaml
+dataset_config: datasets/dummy.yaml
+
+train:
+  epochs: 50
+  batch_size: 512
+  lr: 0.0001
+  weight_decay: 0.00001
+  scheduler: cosine
+  
+  amp: true
+  loss_alpha: 0.7 # 0.7
+  loss_beta: 0.3 # 0.3
+  weight_factor: 3.0 # 3.0
+  huber_delta_deg: 0.5 # 0.5
+
+# BEV Alignment
+  normalize_xy: true
+  bev_use_hmax: false
+  bev_add_xy: false
+  occ_binary: true
+  dlog_range_norm: true
+  dlog_range_norm_mode: center
+  dlog_range_bin_size: 0.1
+  add_observed_mask: true
+  observed_bins: 360
+  observed_margin: 0.05

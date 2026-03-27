@@ -66,4 +66,51 @@ def collate_fn(batch):
     if bev_batch is not None:
         out["bev"] = bev_batch
 
+    if all("pcd_orig" in item for item in batch):
+        Ns_o = [item["pcd_orig"].shape[0] for item in batch]
+        N_max_o = max(Ns_o)
+        pcd_orig_batch = []
+        mask_orig_batch = []
+        for item in batch:
+            pcd_i = item["pcd_orig"]
+            N_i = pcd_i.shape[0]
+            if N_i < N_max_o:
+                pad = torch.zeros((N_max_o - N_i, 3), dtype=pcd_i.dtype)
+                pcd_full = torch.cat([pcd_i, pad], dim=0)
+            else:
+                pcd_full = pcd_i
+            pcd_orig_batch.append(pcd_full)
+            mask = torch.zeros(N_max_o, dtype=torch.bool)
+            mask[:N_i] = True
+            mask_orig_batch.append(mask)
+        out["pcd_orig"] = torch.stack(pcd_orig_batch, dim=0)
+        out["pcd_orig_mask"] = torch.stack(mask_orig_batch, dim=0)
+
+    if all("bev_orig" in item for item in batch):
+        out["bev_orig"] = torch.stack([item["bev_orig"] for item in batch], dim=0)
+
+    if all("gt_orig" in item for item in batch):
+        out["gt_orig"] = torch.stack([item["gt_orig"] for item in batch], dim=0)
+
+    if all("aug_rot_deg" in item for item in batch):
+        out["aug_rot_deg"] = torch.tensor([item["aug_rot_deg"] for item in batch], dtype=torch.float32)
+
+    if all("joint_shift_x" in item for item in batch):
+        out["joint_shift_x"] = torch.tensor([item["joint_shift_x"] for item in batch], dtype=torch.float32)
+
+    if all("centroid_xy" in item for item in batch):
+        out["centroid_xy"] = torch.stack([item["centroid_xy"] for item in batch], dim=0)
+
+    if all("occ_box" in item for item in batch):
+        out["occ_box"] = torch.stack([item["occ_box"] for item in batch], dim=0)
+
+    if all("occ_applied" in item for item in batch):
+        out["occ_applied"] = torch.tensor([item["occ_applied"] for item in batch], dtype=torch.bool)
+
+    if all("occ_rear_count" in item for item in batch):
+        out["occ_rear_count"] = torch.tensor([item["occ_rear_count"] for item in batch], dtype=torch.int32)
+
+    if all("domain_id" in item for item in batch):
+        out["domain_id"] = torch.tensor([item["domain_id"] for item in batch], dtype=torch.int64)
+
     return out

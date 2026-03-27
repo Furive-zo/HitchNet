@@ -38,6 +38,20 @@ def load_config(exp_cfg_path: str):
     model_cfg = _load_yaml(model_cfg_path)
     dataset_cfg = _load_yaml(dataset_cfg_path)
 
+    # Optional overrides from experiment config
+    if "model" in exp_cfg:
+        model_cfg["model"] = {**model_cfg.get("model", {}), **exp_cfg.get("model", {})}
+    # Allow model overrides from train cfg when keys overlap
+    if "train" in exp_cfg:
+        train_overrides = {
+            k: v for k, v in exp_cfg.get("train", {}).items()
+            if k in model_cfg.get("model", {})
+        }
+        if train_overrides:
+            model_cfg["model"] = {**model_cfg.get("model", {}), **train_overrides}
+    if "dataset" in exp_cfg:
+        dataset_cfg["dataset"] = {**dataset_cfg.get("dataset", {}), **exp_cfg.get("dataset", {})}
+
     cfg = {
         "experiment": exp_cfg.get("experiment", {}),
         "train": exp_cfg.get("train", {}),

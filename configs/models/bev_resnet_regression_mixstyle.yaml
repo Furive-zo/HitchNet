@@ -1,0 +1,11 @@
+model:
+  name: bev_resnet_regression_mixstyle
+  bev_channels: 3
+  resnet: 18
+  feat_dim: 256
+  head_hidden: 128
+  dropout: 0.1
+  mixstyle_p: 0.5
+  mixstyle_alpha: 0.1
+  mixstyle_layer2: true
+  mixstyle_layer3: true
