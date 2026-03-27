@@ -1,71 +1,45 @@
 # HitchNet
 
-Trailer hitch angle estimation, training, evaluation, and analysis codebase.
+Hitch angle estimation codebase for the `LI-HAE` trailer dataset.
 
-## Overview
+## Highlights
 
-This repository contains training, evaluation, domain adaptation, and analysis scripts for trailer hitch angle estimation.
-
-- Main supervised training: `scripts/train.py`
-- Main evaluation: `scripts/test.py`
-- Domain adaptation training:
-  - DANN: `scripts/train_dann.py`
-  - Deep CORAL: `scripts/train_coral.py`
-  - CORAL-DG: `scripts/train_coral_dg.py`
+- Supervised training: `scripts/train.py`
+- Evaluation: `scripts/test.py`
+- Domain adaptation: `scripts/train_dann.py`, `scripts/train_coral.py`, `scripts/train_coral_dg.py`
 - Multi-seed training: `scripts/train_multi_seed.sh`
 
-Experiments are defined in `configs/experiments/*.yaml`. Each experiment config references a model config and a dataset config.
+Trailer type mapping:
 
-## Repository Structure
+- `dummy` = `Long-Flat`
+- `charger` = `Short-Tall`
+- `temporary` = `Compact`
 
-```text
-configs/
-  datasets/         # dataset root/split configs
-  experiments/      # experiment-level configs
-  models/           # model configs
-scripts/            # train/test/eval/plot scripts
-models/             # model implementations
-utils/              # config, dataset, loss, and collate utilities
-ckpts/              # training checkpoints and logs
-results/            # evaluation outputs
-datasets/           # local dataset location
-```
+## Setup
 
-## Environment
+Training and evaluation were run in the `conda` environment `trailer_env`.
 
-The training and evaluation runs in this repository were performed in the following conda environment:
-
-```bash
-conda activate trailer_env
-```
-
-### Create the conda environment
-
-Use the provided `environment.yml`:
+Create it with:
 
 ```bash
 conda env create -f environment.yml
 conda activate trailer_env
 ```
 
-If you need to update an existing environment:
+Update an existing environment with:
 
 ```bash
 conda env update -f environment.yml --prune
 conda activate trailer_env
 ```
 
-### Install with pip instead
-
-For a pip-based setup, install PyTorch first according to your CUDA/CPU environment, then install the remaining packages:
+If you prefer `pip`, install PyTorch for your CUDA or CPU environment first, then run:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Core packages
-
-The project depends on at least the following packages for standard training and evaluation:
+Core packages:
 
 - Python 3.10+
 - PyTorch
@@ -79,24 +53,14 @@ The project depends on at least the following packages for standard training and
 - Open3D
 - fvcore
 
-Notes:
-
-- `scripts/ekf_hitch_angle.py` also depends on ROS2 packages such as `rclpy`, `sensor_msgs`, and related message packages. Those are not included in `requirements.txt` or `environment.yml`.
-- Examples in this README assume commands are run after activating `trailer_env` and use `python3 -m scripts.<name>`.
+`scripts/ekf_hitch_angle.py` additionally requires ROS2 packages and is not covered by `environment.yml`.
 
 ## Dataset
 
-This project uses the `LI-HAE` dataset.
+- Dataset DOI: [LI-HAE](https://dx.doi.org/10.21227/ptyv-ra09)
+- Pretrained weights: [Google Drive folder](https://drive.google.com/drive/folders/17NHSDGD8qk7l5HLnd8I7UzrvTcBPC9Q1?usp=sharing)
 
-- Dataset DOI: [https://dx.doi.org/10.21227/ptyv-ra09](https://dx.doi.org/10.21227/ptyv-ra09)
-
-Trailer type mapping used in this repository:
-
-- `dummy` = `Long-Flat`
-- `charger` = `Short-Tall`
-- `temporary` = `Compact`
-
-After downloading the dataset, place it under the following structure:
+Expected local layout:
 
 ```text
 datasets/
@@ -111,78 +75,42 @@ datasets/
       temporary_trailer_split.json
 ```
 
-The current dataset configs are:
+Dataset configs live in:
 
 - `configs/datasets/charger.yaml`
 - `configs/datasets/dummy.yaml`
 - `configs/datasets/temporary.yaml`
 
-For example, `configs/datasets/charger.yaml` expects:
+If your dataset is stored elsewhere, update `root` and `split` in the dataset config files.
 
-- `root: datasets/LI-HAE/dataset/charger_trailer`
-- `split: datasets/LI-HAE/splits/charger_trailer_split.json`
-
-If your dataset is stored elsewhere, update the `root` and `split` fields in `configs/datasets/*.yaml`.
-
-## Pretrained Weights
-
-Pretrained checkpoints can be downloaded here:
-
-- Weights link: [Google Drive folder](https://drive.google.com/drive/folders/17NHSDGD8qk7l5HLnd8I7UzrvTcBPC9Q1?usp=sharing)
-
-Recommended placement:
+Recommended pretrained checkpoint placement:
 
 ```text
 ckpts/<experiment.name>/best.pth
 ```
 
-Examples:
+## Configs
 
-```text
-ckpts/dummy_bev_resnet_regression_norm_aug1/best.pth
-ckpts/charger_bev_resnet_regression_dann_dummy/best.pth
-```
+Experiments are defined in `configs/experiments/*.yaml`.
 
-If a downloaded file has a different name, either rename it to `best.pth` inside the corresponding experiment directory or pass the exact path with `--ckpt` during evaluation.
+Each experiment config points to:
 
-## Config System
+- a model config in `configs/models/`
+- a dataset config in `configs/datasets/`
+- training options under `train`
 
-Each experiment is controlled by a single file in `configs/experiments/*.yaml`.
-
-Example:
-
-```yaml
-experiment:
-  name: dummy_bev_resnet_regression_norm_aug1
-  seed: 42
-
-model_config: models/bev_resnet_regression_norm.yaml
-dataset_config: datasets/dummy.yaml
-
-train:
-  epochs: 50
-  batch_size: 512
-  lr: 0.0001
-```
-
-Key fields:
-
-- `experiment.name`: output directory name
-- `model_config`: model definition under `configs/models/`
-- `dataset_config`: dataset definition under `configs/datasets/`
-- `train`: training hyperparameters, augmentation, normalization, and related options
-- `target_dataset_config`: optional target dataset config for source-target adaptation methods such as DANN and CORAL
+For adaptation methods such as DANN and CORAL, use configs that also include `target_dataset_config`.
 
 ## Training
 
-### 1. Standard supervised training
+Standard supervised training:
 
 ```bash
 python3 -m scripts.train \
   --config configs/experiments/dummy_bev_resnet_regression_norm_aug1.yaml
 ```
 
-You can also specify the device and worker count:
+With explicit device and worker count:
 
 ```bash
 python3 -m scripts.train \
@@ -191,7 +119,36 @@ python3 -m scripts.train \
   --num_workers 16
 ```
 
-Training outputs are typically written to:
+DANN:
+
+```bash
+python3 -m scripts.train_dann \
+  --config configs/experiments/charger_bev_resnet_regression_dann_dummy.yaml
+```
+
+Deep CORAL:
+
+```bash
+python3 -m scripts.train_coral \
+  --config configs/experiments/dummy_bev_resnet_regression_coral_charger.yaml
+```
+
+CORAL-DG:
+
+```bash
+python3 -m scripts.train_coral_dg \
+  --config configs/experiments/dummy_bev_resnet_regression_coral_dg.yaml
+```
+
+Multi-seed:
+
+```bash
+bash scripts/train_multi_seed.sh \
+  configs/experiments/dummy_bev_resnet_regression_norm_aug2.yaml \
+  43 44
+```
+
+Training outputs are written to:
 
 ```text
 ckpts/<experiment.name>/
@@ -201,54 +158,9 @@ ckpts/<experiment.name>/
   metrics_log.csv
 ```
 
-### 2. DANN training
-
-Use an experiment config that includes `target_dataset_config`.
-
-```bash
-python3 -m scripts.train_dann \
-  --config configs/experiments/charger_bev_resnet_regression_dann_dummy.yaml
-```
-
-A quick launcher is also provided:
-
-```bash
-bash train_hitchnet.sh
-```
-
-### 3. Deep CORAL training
-
-```bash
-python3 -m scripts.train_coral \
-  --config configs/experiments/dummy_bev_resnet_regression_coral_charger.yaml
-```
-
-### 4. CORAL-DG training
-
-```bash
-python3 -m scripts.train_coral_dg \
-  --config configs/experiments/dummy_bev_resnet_regression_coral_dg.yaml
-```
-
-### 5. Multi-seed training
-
-```bash
-bash scripts/train_multi_seed.sh \
-  configs/experiments/dummy_bev_resnet_regression_norm_aug2.yaml \
-  43 44
-```
-
-You can control runtime options with environment variables:
-
-```bash
-DEVICE=cuda NUM_WORKERS=8 bash scripts/train_multi_seed.sh
-```
-
 ## Evaluation
 
-Main evaluation is done with `scripts/test.py`.
-
-### 1. Basic evaluation
+Basic evaluation:
 
 ```bash
 python3 -m scripts.test \
@@ -256,9 +168,7 @@ python3 -m scripts.test \
   --ckpt ckpts/dummy_bev_resnet_regression_norm_aug1/best.pth
 ```
 
-### 2. Cross-domain evaluation with another trailer type
-
-If you pass `--trailer_type`, evaluation uses that trailer dataset instead of the dataset defined in the experiment config.
+Cross-domain evaluation:
 
 ```bash
 python3 -m scripts.test \
@@ -268,13 +178,13 @@ python3 -m scripts.test \
   --num_workers 16
 ```
 
-Supported values for `--trailer_type`:
+Supported `--trailer_type` values:
 
 - `charger` (`Short-Tall`)
 - `dummy` (`Long-Flat`)
 - `temporary` (`Compact`)
 
-### 3. Save CSVs, plots, and BEV visualizations
+Save CSVs and plots:
 
 ```bash
 python3 -m scripts.test \
@@ -283,74 +193,14 @@ python3 -m scripts.test \
   --trailer_type charger \
   --save_csv \
   --plot \
-  --plot_bins 5 \
-  --save_err_bev \
-  --err_bev_thresh 2.0 \
-  --err_bev_max 50 \
-  --save_best_bev
+  --plot_bins 5
 ```
 
-Useful options:
+Evaluation outputs are written to:
 
-- `--save_csv`: save sample-level CSV outputs
-- `--plot`: save error distribution plots
-- `--plot_bins`: bin size in degrees for plots
-- `--save_err_bev`: save BEV images for high-error samples
-- `--err_bev_thresh`: error threshold in degrees for BEV export
-- `--err_bev_max`: maximum number of high-error BEV images to save
-- `--save_bev_samples`: save sample BEV images
-- `--save_best_bev`: save the minimum-error sample
-- `--save_attn`: save attention overlays
-- `--exp_name`: override the evaluation output folder name
+- `ckpts/<experiment.name>/`
+- `results/<experiment.name>/<trailer_type>_trailer/` when `--trailer_type` is used
 
-A quick launcher is also available:
+## License
 
-```bash
-bash test_hitchnet.sh
-```
-
-Evaluation outputs are typically written to:
-
-- Default evaluation: `ckpts/<experiment.name>/`
-- Evaluation with `--trailer_type`: `results/<experiment.name>/<trailer_type>_trailer/`
-
-## Typical Workflows
-
-### Train and evaluate on the same trailer type
-
-```bash
-python3 -m scripts.train \
-  --config configs/experiments/dummy_bev_resnet_regression_norm_aug1.yaml
-
-python3 -m scripts.test \
-  --config configs/experiments/dummy_bev_resnet_regression_norm_aug1.yaml \
-  --ckpt ckpts/dummy_bev_resnet_regression_norm_aug1/best.pth
-```
-
-### Train on `dummy` and evaluate on `charger`
-
-```bash
-python3 -m scripts.train \
-  --config configs/experiments/dummy_bev_resnet_regression_norm_aug1.yaml
-
-python3 -m scripts.test \
-  --config configs/experiments/dummy_bev_resnet_regression_norm_aug1.yaml \
-  --ckpt ckpts/dummy_bev_resnet_regression_norm_aug1/best.pth \
-  --trailer_type charger
-```
-
-### Evaluate with a downloaded pretrained checkpoint
-
-```bash
-python3 -m scripts.test \
-  --config configs/experiments/charger_bev_resnet_regression_dann_dummy.yaml \
-  --ckpt ckpts/charger_bev_resnet_regression_dann_dummy/best.pth \
-  --trailer_type dummy
-```
-
-## Notes
-
-- The checkpoint path must be passed explicitly. In most cases, the best model is stored at `ckpts/<exp_name>/best.pth`.
-- Training logs are saved as `metrics_log.csv` and `best_metrics.json`.
-- Some experiments use seed-specific experiment names, so the checkpoint directory follows that exact name.
-- Large checkpoints, datasets, and result artifacts should not be committed to git.
+This project is licensed under the Apache License 2.0. See [LICENSE](/home/future/furive-zo/HitchNet/LICENSE).
