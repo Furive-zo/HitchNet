@@ -42,7 +42,13 @@ At minimum, you need:
 - matplotlib
 - tqdm
 
-Examples in this README assume commands are run with `python3 -m scripts.<name>`.
+Training and evaluation in this project were run in the `conda` environment below:
+
+```bash
+conda activate trailer_env
+```
+
+Examples in this README assume commands are run after activating that environment and use `python3 -m scripts.<name>`.
 
 ## Dataset
 
