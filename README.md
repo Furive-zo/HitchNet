@@ -33,22 +33,56 @@ datasets/           # local dataset location
 
 ## Environment
 
-At minimum, you need:
-
-- Python 3.10+
-- PyTorch
-- NumPy
-- PyYAML
-- matplotlib
-- tqdm
-
-Training and evaluation in this project were run in the `conda` environment below:
+The training and evaluation runs in this repository were performed in the following conda environment:
 
 ```bash
 conda activate trailer_env
 ```
 
-Examples in this README assume commands are run after activating that environment and use `python3 -m scripts.<name>`.
+### Create the conda environment
+
+Use the provided `environment.yml`:
+
+```bash
+conda env create -f environment.yml
+conda activate trailer_env
+```
+
+If you need to update an existing environment:
+
+```bash
+conda env update -f environment.yml --prune
+conda activate trailer_env
+```
+
+### Install with pip instead
+
+For a pip-based setup, install PyTorch first according to your CUDA/CPU environment, then install the remaining packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Core packages
+
+The project depends on at least the following packages for standard training and evaluation:
+
+- Python 3.10+
+- PyTorch
+- torchvision
+- torchaudio
+- NumPy
+- PyYAML
+- matplotlib
+- SciPy
+- tqdm
+- Open3D
+- fvcore
+
+Notes:
+
+- `scripts/ekf_hitch_angle.py` also depends on ROS2 packages such as `rclpy`, `sensor_msgs`, and related message packages. Those are not included in `requirements.txt` or `environment.yml`.
+- Examples in this README assume commands are run after activating `trailer_env` and use `python3 -m scripts.<name>`.
 
 ## Dataset
 

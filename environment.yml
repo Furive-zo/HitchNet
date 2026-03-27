@@ -1,0 +1,20 @@
+name: trailer_env
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pyyaml
+  - tqdm
+  - matplotlib
+  - scipy
+  - open3d
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - pip:
+      - fvcore
