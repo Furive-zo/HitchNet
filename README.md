@@ -56,6 +56,12 @@ This project uses the `LI-HAE` dataset.
 
 - Dataset DOI: [https://dx.doi.org/10.21227/ptyv-ra09](https://dx.doi.org/10.21227/ptyv-ra09)
 
+Trailer type mapping used in this repository:
+
+- `dummy` = `Long-Flat`
+- `charger` = `Short-Tall`
+- `temporary` = `Compact`
+
 After downloading the dataset, place it under the following structure:
 
 ```text
@@ -230,9 +236,9 @@ python3 -m scripts.test \
 
 Supported values for `--trailer_type`:
 
-- `charger`
-- `dummy`
-- `temporary`
+- `charger` (`Short-Tall`)
+- `dummy` (`Long-Flat`)
+- `temporary` (`Compact`)
 
 ### 3. Save CSVs, plots, and BEV visualizations
 
