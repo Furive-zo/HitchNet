@@ -54,7 +54,7 @@ Examples in this README assume commands are run after activating that environmen
 
 This project uses the `LI-HAE` dataset.
 
-- Dataset DOI: `https://dx.doi.org/10.21227/ptyv-ra09`
+- Dataset DOI: [https://dx.doi.org/10.21227/ptyv-ra09](https://dx.doi.org/10.21227/ptyv-ra09)
 
 After downloading the dataset, place it under the following structure:
 
@@ -88,7 +88,7 @@ If your dataset is stored elsewhere, update the `root` and `split` fields in `co
 
 Pretrained checkpoints can be downloaded here:
 
-- Weights link: `https://drive.google.com/drive/folders/17NHSDGD8qk7l5HLnd8I7UzrvTcBPC9Q1?usp=sharing`
+- Weights link: [Google Drive folder](https://drive.google.com/drive/folders/17NHSDGD8qk7l5HLnd8I7UzrvTcBPC9Q1?usp=sharing)
 
 Recommended placement:
 
