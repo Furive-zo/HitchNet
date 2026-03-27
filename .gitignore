@@ -1,0 +1,17 @@
+# Checkpoints and experiment outputs
+ckpts/
+results/
+proxy_results/
+logs_proxy_coraldg/
+
+# Local dataset artifacts
+datasets/LI-HAE/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Generated figures
+bev_dlog.png
+bev_hmax.png
+bev_occ.png
